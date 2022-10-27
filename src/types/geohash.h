@@ -87,23 +87,23 @@ typedef enum {
   GEOHASH_NORT_EAST
 } GeoDirection;
 
-struct GeoHashBits{
+struct GeoHashBits {
   uint64_t bits = 0;
   uint8_t step = 0;
 };
 
-struct GeoHashRange{
+struct GeoHashRange {
   double min = 0;
   double max = 0;
 };
 
-struct GeoHashArea{
+struct GeoHashArea {
   GeoHashBits hash;
   GeoHashRange longitude;
   GeoHashRange latitude;
 };
 
-struct GeoHashNeighbors{
+struct GeoHashNeighbors {
   GeoHashBits north;
   GeoHashBits east;
   GeoHashBits west;
@@ -116,7 +116,7 @@ struct GeoHashNeighbors{
 
 typedef uint64_t GeoHashFix52Bits;
 
-struct GeoHashRadius{
+struct GeoHashRadius {
   GeoHashBits hash;
   GeoHashArea area;
   GeoHashNeighbors neighbors;
