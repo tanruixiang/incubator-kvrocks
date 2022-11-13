@@ -1523,7 +1523,6 @@ class CommandHRange : public Commander {
       spec_.reversed = reversed_;
       spec_.count = count_;
       spec_.offset = offset_;
-      spec_.offset = limit_;
       Status s;
       if (spec_.reversed) {
         s = Redis::Hash::ParseRangeLexSpec(args[3], args[2], &spec_);
@@ -1542,7 +1541,8 @@ class CommandHRange : public Commander {
     Redis::Hash hash_db(svr->storage_, conn->GetNamespace());
     if (by_flag_ == "BYLEX"){
       std::vector<FieldValue> field_values;
-      rocksdb::Status s = hash_db.RangeByLex(args_[1], args_[2], args_[3], spec_, &field_values);
+      LOG(INFO) <<spec_.min<<" "<<spec_.max<<" "<<spec_.minex<<" "<<spec_.maxex<<" "<<spec_.offset<<" "<<spec_.count;
+      rocksdb::Status s = hash_db.RangeByLex(args_[1], spec_, &field_values);
       if (!s.ok()) {
         return Status(Status::RedisExecErr, s.ToString());
       }
@@ -1561,7 +1561,6 @@ class CommandHRange : public Commander {
   }
 
  private:
-  int64_t limit_ = LONG_MAX;
   std::string_view by_flag_ = "";
   bool reversed_ = false;
   int64_t offset_ = 0;

@@ -276,9 +276,9 @@ rocksdb::Status Hash::MSet(const Slice &user_key, const std::vector<FieldValue> 
   return storage_->Write(storage_->DefaultWriteOptions(), &batch);
 }
 
-rocksdb::Status Hash::RangeByLex(const Slice &user_key, const Slice &start, const Slice &stop, HashSpec spec, std::vector<FieldValue> *field_values) {
+rocksdb::Status Hash::RangeByLex(const Slice &user_key, HashSpec spec, std::vector<FieldValue> *field_values) {
   field_values->clear();
-  if (start.compare(stop) >= 0 || spec.count <= 0) {
+  if (spec.count == 0) {
     return rocksdb::Status::OK();
   }
   std::string ns_key;
@@ -286,15 +286,19 @@ rocksdb::Status Hash::RangeByLex(const Slice &user_key, const Slice &start, cons
   HashMetadata metadata(false);
   rocksdb::Status s = GetMetadata(ns_key, &metadata);
   if (!s.ok()) return s.IsNotFound() ? rocksdb::Status::OK() : s;
-  spec.count = std::min(static_cast<int64_t>(metadata.size), spec.count);
-  std::string start_key, stop_key;
-  InternalKey(ns_key, start, metadata.version, storage_->IsSlotIdEncoded()).Encode(&start_key);
-  InternalKey(ns_key, stop, metadata.version, storage_->IsSlotIdEncoded()).Encode(&stop_key);
+  
+  std::string start_member = spec.reversed ? spec.max : spec.min;
+  std::string start_key, prefix_key, next_version_prefix_key;
+  InternalKey(ns_key, start_member, metadata.version, storage_->IsSlotIdEncoded()).Encode(&start_key);
+  InternalKey(ns_key, "", metadata.version, storage_->IsSlotIdEncoded()).Encode(&prefix_key);
+  InternalKey(ns_key, "", metadata.version + 1, storage_->IsSlotIdEncoded()).Encode(&next_version_prefix_key);
   rocksdb::ReadOptions read_options;
   LatestSnapShot ss(db_);
   read_options.snapshot = ss.GetSnapShot();
-  rocksdb::Slice upper_bound(stop_key);
+  rocksdb::Slice upper_bound(next_version_prefix_key);
   read_options.iterate_upper_bound = &upper_bound;
+  rocksdb::Slice lower_bound(prefix_key);
+  read_options.iterate_lower_bound = &lower_bound;
   read_options.fill_cache = false;
 
   auto iter = DBUtil::UniqueIterator(db_, read_options);
@@ -308,7 +312,7 @@ rocksdb::Status Hash::RangeByLex(const Slice &user_key, const Slice &start, cons
     }
   }
   int64_t pos =0;
-  for (; iter->Valid() ; (!spec.reversed ? iter->Next() : iter->Prev())) {
+  for (; iter->Valid() && iter->key().starts_with(prefix_key) ; (!spec.reversed ? iter->Next() : iter->Prev())) {
     FieldValue tmp_field_value;
     InternalKey ikey(iter->key(), storage_->IsSlotIdEncoded());
     if (spec.reversed) {
