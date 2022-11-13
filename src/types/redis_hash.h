@@ -42,7 +42,8 @@ struct HashSpec {
   bool max_infinite; /* are max infinite */
   int64_t offset, count;
   bool removed, reversed;
-  HashSpec():minex(false),maxex(false),max_infinite(false),offset(-1),count(-1),removed(false),reversed(false){}
+  HashSpec()
+      : minex(false), maxex(false), max_infinite(false), offset(-1), count(-1), removed(false), reversed(false) {}
 };
 
 namespace Redis {
@@ -58,8 +59,9 @@ class Hash : public SubKeyScanner {
   rocksdb::Status IncrByFloat(const Slice &user_key, const Slice &field, double increment, double *ret);
   rocksdb::Status MSet(const Slice &user_key, const std::vector<FieldValue> &field_values, bool nx, int *ret);
   static Status ParseRangeLexSpec(const std::string &min, const std::string &max, HashSpec *spec);
-  rocksdb::Status RangeByLex(const Slice &user_key, HashSpec spec,
-                        std::vector<FieldValue> *field_values);
+  rocksdb::Status RangeByLex(const Slice &user_key, HashSpec spec, std::vector<FieldValue> *field_values);
+  rocksdb::Status Range(const Slice &user_key, int64_t start, int64_t stop, int64_t offset, int64_t count,
+                        bool reversed, std::vector<FieldValue> *field_values);
   rocksdb::Status MGet(const Slice &user_key, const std::vector<Slice> &fields, std::vector<std::string> *values,
                        std::vector<rocksdb::Status> *statuses);
   rocksdb::Status GetAll(const Slice &user_key, std::vector<FieldValue> *field_values,

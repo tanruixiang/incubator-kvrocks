@@ -286,7 +286,7 @@ rocksdb::Status Hash::RangeByLex(const Slice &user_key, HashSpec spec, std::vect
   HashMetadata metadata(false);
   rocksdb::Status s = GetMetadata(ns_key, &metadata);
   if (!s.ok()) return s.IsNotFound() ? rocksdb::Status::OK() : s;
-  
+
   std::string start_member = spec.reversed ? spec.max : spec.min;
   std::string start_key, prefix_key, next_version_prefix_key;
   InternalKey(ns_key, start_member, metadata.version, storage_->IsSlotIdEncoded()).Encode(&start_key);
@@ -311,26 +311,87 @@ rocksdb::Status Hash::RangeByLex(const Slice &user_key, HashSpec spec, std::vect
       iter->SeekForPrev(start_key);
     }
   }
-  int64_t pos =0;
-  for (; iter->Valid() && iter->key().starts_with(prefix_key) ; (!spec.reversed ? iter->Next() : iter->Prev())) {
+  int64_t pos = 0;
+  for (; iter->Valid() && iter->key().starts_with(prefix_key); (!spec.reversed ? iter->Next() : iter->Prev())) {
     FieldValue tmp_field_value;
     InternalKey ikey(iter->key(), storage_->IsSlotIdEncoded());
     if (spec.reversed) {
       if (ikey.GetSubKey().ToString() < spec.min || (spec.minex && ikey.GetSubKey().ToString() == spec.min)) {
         break;
       }
-      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) || (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max)) {
+      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) ||
+          (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max)) {
         continue;
       }
     } else {
       if (spec.minex && ikey.GetSubKey().ToString() == spec.min) continue;  // the min member was exclusive
-      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) || (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max)) break;
+      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) ||
+          (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max))
+        break;
     }
     if (spec.offset >= 0 && pos++ < spec.offset) continue;
     tmp_field_value.field = ikey.GetSubKey().ToString();
     tmp_field_value.value = iter->value().ToString();
     field_values->emplace_back(tmp_field_value);
     if (spec.count > 0 && field_values && field_values->size() >= static_cast<unsigned>(spec.count)) break;
+  }
+  return rocksdb::Status::OK();
+}
+rocksdb::Status Hash::Range(const Slice &user_key, int64_t start, int64_t stop, int64_t offset, int64_t count,
+                            bool reversed, std::vector<FieldValue> *field_values) {
+  LOG(INFO) << start << " " << stop << " " << offset << " " << count << " " << reversed;
+  field_values->clear();
+  if (count == 0) {
+    return rocksdb::Status::OK();
+  }
+  std::string ns_key;
+  AppendNamespacePrefix(user_key, &ns_key);
+  HashMetadata metadata(false);
+  rocksdb::Status s = GetMetadata(ns_key, &metadata);
+  if (!s.ok()) return s.IsNotFound() ? rocksdb::Status::OK() : s;
+  if (start < 0) start = static_cast<int64_t>(metadata.size) + start;
+  if (stop < 0) stop = static_cast<int64_t>(metadata.size) + stop;
+  if (start >= static_cast<int64_t>(metadata.size) || stop < 0 || start > stop) return rocksdb::Status::OK();
+  if (start < 0) start = 0;
+  if (count < 0) count = static_cast<int64_t>(metadata.size);
+  std::string prefix_key, next_version_prefix_key;
+  InternalKey(ns_key, "", metadata.version, storage_->IsSlotIdEncoded()).Encode(&prefix_key);
+  InternalKey(ns_key, "", metadata.version + 1, storage_->IsSlotIdEncoded()).Encode(&next_version_prefix_key);
+  rocksdb::ReadOptions read_options;
+  LatestSnapShot ss(db_);
+  read_options.snapshot = ss.GetSnapShot();
+  rocksdb::Slice upper_bound(next_version_prefix_key);
+  read_options.iterate_upper_bound = &upper_bound;
+  read_options.fill_cache = false;
+
+  auto iter = DBUtil::UniqueIterator(db_, read_options);
+  iter->Seek(prefix_key);
+  if (reversed && (!iter->Valid() || !iter->key().starts_with(prefix_key))) {
+    iter->SeekForPrev(prefix_key);
+  }
+  if (!reversed) {
+    iter->Seek(prefix_key);
+  } else {
+    iter->SeekForPrev(next_version_prefix_key);
+  }
+  int64_t pos = 0;
+  // go to offset end
+  for (; iter->Valid() && iter->key().starts_with(prefix_key); !reversed ? iter->Next() : iter->Prev()) {
+    if (offset >= 0 && pos++ < offset)
+      continue;
+    else
+      break;
+  }
+  pos = 0;
+  count = std::min(count, stop - start + 1);
+  for (; iter->Valid() && iter->key().starts_with(prefix_key); !reversed ? iter->Next() : iter->Prev()) {
+    if (start >= 0 && pos++ < start) continue;
+    FieldValue tmp_field_value;
+    InternalKey ikey(iter->key(), storage_->IsSlotIdEncoded());
+    tmp_field_value.field = ikey.GetSubKey().ToString();
+    tmp_field_value.value = iter->value().ToString();
+    field_values->emplace_back(tmp_field_value);
+    if (count > 0 && field_values && field_values->size() >= static_cast<unsigned>(count)) break;
   }
   return rocksdb::Status::OK();
 }
