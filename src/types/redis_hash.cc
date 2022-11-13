@@ -276,10 +276,9 @@ rocksdb::Status Hash::MSet(const Slice &user_key, const std::vector<FieldValue> 
   return storage_->Write(storage_->DefaultWriteOptions(), &batch);
 }
 
-rocksdb::Status Hash::Range(const Slice &user_key, const Slice &start, const Slice &stop, int64_t limit,
-                            std::vector<FieldValue> *field_values) {
+rocksdb::Status Hash::RangeByLex(const Slice &user_key, const Slice &start, const Slice &stop, HashSpec spec, std::vector<FieldValue> *field_values) {
   field_values->clear();
-  if (start.compare(stop) >= 0 || limit <= 0) {
+  if (start.compare(stop) >= 0 || spec.count <= 0) {
     return rocksdb::Status::OK();
   }
   std::string ns_key;
@@ -287,7 +286,7 @@ rocksdb::Status Hash::Range(const Slice &user_key, const Slice &start, const Sli
   HashMetadata metadata(false);
   rocksdb::Status s = GetMetadata(ns_key, &metadata);
   if (!s.ok()) return s.IsNotFound() ? rocksdb::Status::OK() : s;
-  limit = std::min(static_cast<int64_t>(metadata.size), limit);
+  spec.count = std::min(static_cast<int64_t>(metadata.size), spec.count);
   std::string start_key, stop_key;
   InternalKey(ns_key, start, metadata.version, storage_->IsSlotIdEncoded()).Encode(&start_key);
   InternalKey(ns_key, stop, metadata.version, storage_->IsSlotIdEncoded()).Encode(&stop_key);
@@ -299,14 +298,35 @@ rocksdb::Status Hash::Range(const Slice &user_key, const Slice &start, const Sli
   read_options.fill_cache = false;
 
   auto iter = DBUtil::UniqueIterator(db_, read_options);
-  iter->Seek(start_key);
-  for (int64_t i = 0; iter->Valid() && i <= limit - 1; ++i) {
+  if (!spec.reversed) {
+    iter->Seek(start_key);
+  } else {
+    if (spec.max_infinite) {
+      iter->SeekToLast();
+    } else {
+      iter->SeekForPrev(start_key);
+    }
+  }
+  int64_t pos =0;
+  for (; iter->Valid() ; (!spec.reversed ? iter->Next() : iter->Prev())) {
     FieldValue tmp_field_value;
     InternalKey ikey(iter->key(), storage_->IsSlotIdEncoded());
+    if (spec.reversed) {
+      if (ikey.GetSubKey().ToString() < spec.min || (spec.minex && ikey.GetSubKey().ToString() == spec.min)) {
+        break;
+      }
+      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) || (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max)) {
+        continue;
+      }
+    } else {
+      if (spec.minex && ikey.GetSubKey().ToString() == spec.min) continue;  // the min member was exclusive
+      if ((spec.maxex && ikey.GetSubKey().ToString() == spec.max) || (!spec.max_infinite && ikey.GetSubKey().ToString() > spec.max)) break;
+    }
+    if (spec.offset >= 0 && pos++ < spec.offset) continue;
     tmp_field_value.field = ikey.GetSubKey().ToString();
     tmp_field_value.value = iter->value().ToString();
     field_values->emplace_back(tmp_field_value);
-    iter->Next();
+    if (spec.count > 0 && field_values && field_values->size() >= static_cast<unsigned>(spec.count)) break;
   }
   return rocksdb::Status::OK();
 }
@@ -355,4 +375,36 @@ rocksdb::Status Hash::Scan(const Slice &user_key, const std::string &cursor, uin
   return SubKeyScanner::Scan(kRedisHash, user_key, cursor, limit, field_prefix, fields, values);
 }
 
+Status Hash::ParseRangeLexSpec(const std::string &min, const std::string &max, HashSpec *spec) {
+  if (min == "+" || max == "-") {
+    return Status(Status::NotOK, "min > max");
+  }
+
+  if (min == "-") {
+    spec->min = "";
+  } else {
+    if (min[0] == '(') {
+      spec->minex = true;
+    } else if (min[0] == '[') {
+      spec->minex = false;
+    } else {
+      return Status(Status::NotOK, "the min is illegal");
+    }
+    spec->min = min.substr(1);
+  }
+
+  if (max == "+") {
+    spec->max_infinite = true;
+  } else {
+    if (max[0] == '(') {
+      spec->maxex = true;
+    } else if (max[0] == '[') {
+      spec->maxex = false;
+    } else {
+      return Status(Status::NotOK, "the max is illegal");
+    }
+    spec->max = max.substr(1);
+  }
+  return Status::OK();
+}
 }  // namespace Redis
