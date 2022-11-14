@@ -495,8 +495,7 @@ rocksdb::Status ZSet::RangeByLex(const Slice &user_key, const ZRangeLexSpec &spe
     } else {
       if (mscores) {
         double score = 0;
-        GetDouble(&member, &score);
-        std::cout<<"fuck "<<member.ToString()<<"\n";
+        Score(user_key, member, &score);
         mscores->emplace_back(MemberScore{member.ToString(), score});
       }
     }

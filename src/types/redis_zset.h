@@ -72,8 +72,8 @@ typedef struct KeyWeight {
   double weight;
 } KeyWeight;
 
-struct MemberScore{
-  explicit MemberScore(std::string member_ = "",double score_ = 0):member(std::move(member_)),score(score_){}
+struct MemberScore {
+  explicit MemberScore(std::string member_ = "", double score_ = 0) : member(std::move(member_)), score(score_) {}
   std::string member;
   double score;
 };
@@ -124,7 +124,8 @@ class ZSet : public SubKeyScanner {
   rocksdb::Status Range(const Slice &user_key, int start, int stop, uint8_t flags, std::vector<MemberScore> *mscores,
                         int limit_offset = 0, int limit_count = -1);
   rocksdb::Status RangeByScore(const Slice &user_key, ZRangeSpec spec, std::vector<MemberScore> *mscores, int *size);
-  rocksdb::Status RangeByLex(const Slice &user_key, const ZRangeLexSpec &spec, std::vector<MemberScore> *mscores, int *size);
+  rocksdb::Status RangeByLex(const Slice &user_key, const ZRangeLexSpec &spec, std::vector<MemberScore> *mscores,
+                             int *size);
   rocksdb::Status Rank(const Slice &user_key, const Slice &member, bool reversed, int *ret);
   rocksdb::Status Remove(const Slice &user_key, const std::vector<Slice> &members, int *ret);
   rocksdb::Status RemoveRangeByScore(const Slice &user_key, ZRangeSpec spec, int *ret);

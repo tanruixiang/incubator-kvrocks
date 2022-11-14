@@ -2625,7 +2625,7 @@ class CommandZRange : public Commander {
     if (!s.ok()) {
       return Status(Status::RedisExecErr, s.ToString());
     }
-    packageOutput(member_scores,output);
+    packageOutput(member_scores, output);
     return Status::OK();
   }
 
@@ -2659,7 +2659,7 @@ class CommandZRevRange : public CommandZRange {
 
 class CommandZRangeByLex : public CommandZRange {
  public:
-  explicit CommandZRangeByLex(bool reversed = false) :reversed_(reversed){ }
+  explicit CommandZRangeByLex(bool reversed = false) : reversed_(reversed) {}
 
   Status Parse(const std::vector<std::string> &args) override {
     const_cast<std::vector<std::string> &>(args).emplace_back("BYLEX");
@@ -2670,13 +2670,14 @@ class CommandZRangeByLex : public CommandZRange {
   Status Execute(Server *svr, Connection *conn, std::string *output) override {
     return CommandZRange::Execute(svr, conn, output);
   }
+
  private:
- bool reversed_;
+  bool reversed_;
 };
 
-class CommandZRangeByScore : public CommandZRange{
+class CommandZRangeByScore : public CommandZRange {
  public:
-  explicit CommandZRangeByScore(bool reversed = false) :reversed_(reversed){}
+  explicit CommandZRangeByScore(bool reversed = false) : reversed_(reversed) {}
   Status Parse(const std::vector<std::string> &args) override {
     const_cast<std::vector<std::string> &>(args).emplace_back("BYSCORE");
     if (reversed_) const_cast<std::vector<std::string> &>(args).emplace_back("REV");
@@ -2685,6 +2686,7 @@ class CommandZRangeByScore : public CommandZRange{
   Status Execute(Server *svr, Connection *conn, std::string *output) override {
     return CommandZRange::Execute(svr, conn, output);
   }
+
  private:
   bool reversed_;
 };
