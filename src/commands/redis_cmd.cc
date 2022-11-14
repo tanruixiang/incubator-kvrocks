@@ -2605,6 +2605,7 @@ class CommandZRange : public Commander {
       }
       specIndex_.min = *parse_start;
       specIndex_.max = *parse_stop;
+      specIndex_.reversed = reversed_;
     }
     return Status::OK();
   }
