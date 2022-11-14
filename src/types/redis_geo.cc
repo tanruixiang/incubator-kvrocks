@@ -22,6 +22,7 @@
 
 #include <algorithm>
 
+#include "status.h"
 #include "util.h"
 
 namespace Redis {
@@ -34,6 +35,10 @@ rocksdb::Status Geo::Add(const Slice &user_key, std::vector<GeoPoint> *geo_point
     geohashEncodeWGS84(geo_point.longitude, geo_point.latitude, GEO_STEP_MAX, &hash);
     GeoHashFix52Bits bits = GeoHashHelper::Align52Bits(hash);
     member_scores.emplace_back(MemberScore{geo_point.member, static_cast<double>(bits)});
+  }
+  if (member_scores.size() == 0) {
+    if (ret) *ret = 0;
+    return rocksdb::Status::OK();
   }
   return ZSet::Add(user_key, ZAddFlags::Default(), &member_scores, ret);
 }
