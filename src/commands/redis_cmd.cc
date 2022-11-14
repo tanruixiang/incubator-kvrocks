@@ -2572,13 +2572,9 @@ class CommandZRange : public Commander {
         return parser.InvalidSyntax();
       }
     }
-    if (by_flag_.empty()) {
-      by_flag_ = "BYINDEX";
-    }
 
     Status s;
     auto &args_v = const_cast<std::vector<std::string> &>(args);
-
     if (by_flag_ == "BYSCORE") {
       spec_.count = count;
       spec_.offset = offset;
@@ -2598,6 +2594,7 @@ class CommandZRange : public Commander {
         return Status(Status::RedisParseErr, s.Msg());
       }
     } else {
+      by_flag_ = "BYINDEX";
       auto parse_start = ParseInt<int>(args[2], 10);
       auto parse_stop = ParseInt<int>(args[3], 10);
       if (!parse_start || !parse_stop) {
@@ -2605,7 +2602,9 @@ class CommandZRange : public Commander {
       }
       specIndex_.min = *parse_start;
       specIndex_.max = *parse_stop;
-      spec_.reversed = reversed_;
+      specIndex_.count = count;
+      specIndex_.offset = offset;
+      specIndex_.reversed = reversed_;
     }
     return Status::OK();
   }
