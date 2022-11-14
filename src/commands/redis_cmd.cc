@@ -2555,15 +2555,14 @@ class CommandZRange : public Commander {
  public:
   explicit CommandZRange(bool reversed = false) : reversed_(reversed) {}
   Status Parse(const std::vector<std::string> &args) override {
+    spec_.reset(nullptr);
     int offset = 0;
     int count = -1;
     CommandParser parser(args, 4);
     while (parser.Good()) {
       if (parser.EatEqICaseFlag("BYSCORE", by_flag_)) {
-        spec_.reset();
         spec_ = std::make_unique<ZRangeSpec>();
       } else if (parser.EatEqICaseFlag("BYLEX", by_flag_)) {
-        spec_.reset();
         spec_ = std::make_unique<ZRangeLexSpec>();
       } else if (parser.EatEqICase("REV")) {
         reversed_ = true;
