@@ -55,7 +55,7 @@ rocksdb::Status ZSet::Add(const Slice &user_key, ZAddFlags flags, std::vector<Me
   batch.PutLogData(log_data.Encode());
   std::string member_key;
   std::set<std::string> added_member_keys;
-  for (int i = static_cast<int>(mscores->size() - 1); i >= 0; i--) {
+  for (int i = static_cast<int>(mscores->size()) - 1; i >= 0; i--) {
     InternalKey(ns_key, (*mscores)[i].member, metadata.version, storage_->IsSlotIdEncoded()).Encode(&member_key);
 
     // Fix the corner case that adds the same member which may add the score
