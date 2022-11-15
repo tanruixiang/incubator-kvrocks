@@ -6040,7 +6040,7 @@ const CommandAttributes redisCommandTable[]{
     MakeCmdAttr<CommandZLexCount>("zlexcount", 4, "read-only", 1, 1, 1),
     MakeCmdAttr<CommandZPopMax>("zpopmax", -2, "write", 1, 1, 1),
     MakeCmdAttr<CommandZPopMin>("zpopmin", -2, "write", 1, 1, 1),
-    MakeCmdAttr<CommandZRange>("zrange", -4, "read-only", 1, 1, 1),
+    MakeCmdAttr<CommandZRange>("zrange", -4, "read-only exclusive", 1, 1, 1),
     MakeCmdAttr<CommandZRevRange>("zrevrange", -4, "read-only", 1, 1, 1),
     MakeCmdAttr<CommandZRangeByLex>("zrangebylex", -4, "read-only", 1, 1, 1),
     MakeCmdAttr<CommandZRevRangeByLex>("zrevrangebylex", -4, "read-only", 1, 1, 1),
