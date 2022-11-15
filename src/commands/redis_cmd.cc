@@ -2553,7 +2553,8 @@ class CommandZPopMax : public CommandZPop {
 
 class CommandZRange : public Commander {
  public:
-  explicit CommandZRange(bool reversed = false) : reversed_(reversed), specptr_(nullptr) {}
+  explicit CommandZRange(bool reversed = false)
+      : by_flag_(""), reversed_(reversed), with_scores_(false), specptr_(nullptr) {}
   Status Parse(const std::vector<std::string> &args) override {
     int offset = 0;
     int count = -1;
@@ -2646,9 +2647,9 @@ class CommandZRange : public Commander {
       if (with_scores_) output->append(Redis::BulkString(Util::Float2String(ms.score)));
     }
   }
-  std::string_view by_flag_ = "";
+  std::string_view by_flag_;
   bool reversed_;
-  bool with_scores_ = false;
+  bool with_scores_;
   std::unique_ptr<ZrangeCommon> specptr_;
   ZRangeSpec spec_;
   ZRangeLexSpec specLex_;
