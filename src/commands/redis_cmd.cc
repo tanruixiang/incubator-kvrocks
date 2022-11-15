@@ -2621,7 +2621,8 @@ class CommandZRange : public Commander {
     if (by_flag_ == "BYLEX") {
       s = zset_db.RangeByLex(args_[1], specLex_, &member_scores, &size);
     } else if (by_flag_ == "BYSCORE") {
-      s = zset_db.RangeByScore(args_[1], *static_cast<ZRangeSpec *>(specptr_.get()), &member_scores, &size);
+      auto tmp = *static_cast<ZRangeSpec *>(specptr_.get());
+      s = zset_db.RangeByScore(args_[1], tmp, &member_scores, &size);
     } else if (by_flag_ == "BYINDEX") {
       s = zset_db.RangeByIndex(args_[1], specIndex_, &member_scores);
     } else {
