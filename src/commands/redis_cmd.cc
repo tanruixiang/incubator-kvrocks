@@ -2584,6 +2584,7 @@ class CommandZRange : public Commander {
       specptr_->offset = offset;
       specptr_->reversed = reversed_;
       if (specptr_->reversed) std::swap(args_v[2], args_v[3]);
+      assert(specptr_ != nullptr);
       s = Redis::ZSet::ParseRangeSpec(args[2], args[3], static_cast<ZRangeSpec *>(specptr_.get()));
       if (!s.IsOK()) {
         return Status(Status::RedisParseErr, s.Msg());
@@ -2621,6 +2622,7 @@ class CommandZRange : public Commander {
     if (by_flag_ == "BYLEX") {
       s = zset_db.RangeByLex(args_[1], specLex_, &member_scores, &size);
     } else if (by_flag_ == "BYSCORE") {
+      assert(specptr_ != nullptr);
       auto tmp = *static_cast<ZRangeSpec *>(specptr_.get());
       s = zset_db.RangeByScore(args_[1], tmp, &member_scores, &size);
     } else if (by_flag_ == "BYINDEX") {
