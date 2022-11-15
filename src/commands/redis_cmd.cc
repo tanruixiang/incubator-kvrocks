@@ -2553,7 +2553,7 @@ class CommandZPopMax : public CommandZPop {
 
 class CommandZRange : public Commander {
  public:
-  explicit CommandZRange(bool reversed = false) : reversed_(reversed) {}
+  explicit CommandZRange(bool reversed = false) : reversed_(reversed), specptr_(nullptr) {}
   Status Parse(const std::vector<std::string> &args) override {
     int offset = 0;
     int count = -1;
