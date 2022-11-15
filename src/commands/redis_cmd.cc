@@ -2628,6 +2628,7 @@ class CommandZRange : public Commander {
     packageOutput(member_scores, output);
     return Status::OK();
   }
+  void operator=(CommandZRange &rhs) { spec_.reset(); }
 
  private:
   void packageOutput(const std::vector<MemberScore> &member_scores, std::string *output) {
