@@ -2560,6 +2560,7 @@ class CommandZRange : public Commander {
     CommandParser parser(args, 4);
     while (parser.Good()) {
       if (parser.EatEqICaseFlag("BYSCORE", by_flag_)) {
+        specptr_ = std::make_unique<ZRangeSpec>();
       } else if (parser.EatEqICaseFlag("BYLEX", by_flag_)) {
       } else if (parser.EatEqICase("REV")) {
         reversed_ = true;
@@ -2579,8 +2580,11 @@ class CommandZRange : public Commander {
       spec_.count = count;
       spec_.offset = offset;
       spec_.reversed = reversed_;
-      if (spec_.reversed) std::swap(args_v[2], args_v[3]);
-      s = Redis::ZSet::ParseRangeSpec(args[2], args[3], &spec_);
+      specptr_->count = count;
+      specptr_->offset = offset;
+      specptr_->reversed = reversed_;
+      if (specptr_->reversed) std::swap(args_v[2], args_v[3]);
+      s = Redis::ZSet::ParseRangeSpec(args[2], args[3], static_cast<ZRangeSpec *>(specptr_.get()));
       if (!s.IsOK()) {
         return Status(Status::RedisParseErr, s.Msg());
       }
@@ -2617,7 +2621,7 @@ class CommandZRange : public Commander {
     if (by_flag_ == "BYLEX") {
       s = zset_db.RangeByLex(args_[1], specLex_, &member_scores, &size);
     } else if (by_flag_ == "BYSCORE") {
-      s = zset_db.RangeByScore(args_[1], spec_, &member_scores, &size);
+      s = zset_db.RangeByScore(args_[1], *static_cast<ZRangeSpec *>(specptr_.get()), &member_scores, &size);
     } else if (by_flag_ == "BYINDEX") {
       s = zset_db.RangeByIndex(args_[1], specIndex_, &member_scores);
     } else {
@@ -2645,7 +2649,7 @@ class CommandZRange : public Commander {
   std::string_view by_flag_ = "";
   bool reversed_;
   bool with_scores_ = false;
-  // std::unique_ptr<ZrangeCommon> spec_;
+  std::unique_ptr<ZrangeCommon> specptr_;
   ZRangeSpec spec_;
   ZRangeLexSpec specLex_;
   ZRangeIndexSpec specIndex_;
